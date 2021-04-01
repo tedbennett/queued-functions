@@ -22,7 +22,7 @@ const getSpotifyToken = async (sessionId) => {
     }));
 
   const now = new Date();
-  if (expiry <= now) {
+  if (expiry <= now.getTime()) {
     const params = new URLSearchParams();
     params.append('grant_type', 'refresh_token');
     params.append('client_id', '1e6ef0ef377c443e8ebf714b5b77cad7');
@@ -39,7 +39,7 @@ const getSpotifyToken = async (sessionId) => {
       .catch((err) => console.log(err));
 
     token = newToken;
-    expiry = new Date(now.getTime() + (newExpiry * 1000));
+    expiry = now.getTime() + (newExpiry * 1000);
     users.update({ _id: monk.id(hostId) }, {
       $set: {
         access_token: token,
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
     key,
     name: req.body.name,
     host,
-    created_at: new Date(),
+    created_at: new Date().getTime(),
     members: [host],
     queue: [],
   };

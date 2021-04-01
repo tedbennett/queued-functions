@@ -77,9 +77,8 @@ router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
       console.log(`ERROR: ${JSON.stringify(error)}`);
       next(error.response.status);
     });
-  const now = new Date();
   // eslint-disable-next-line camelcase
-  const expires_at = new Date(now.getTime() + (expires_in * 1000));
+  const expires_at = new Date().getTime() + (expires_in * 1000);
   users.update({ _id: monk.id(id) }, {
     $set: {
       host: true,
