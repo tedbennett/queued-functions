@@ -7,6 +7,16 @@ const db = require('../database');
 const sessions = db.get('sessions');
 const users = db.get('users');
 
+const broadcast = async (id, clients) => {
+  const session = await sessions.findOne({ id });
+
+  clients.forEach((client) => {
+    if (client.session === id && client.readyState === WebSocket.OPEN) {
+      client.send(session);
+    }
+  });
+};
+
 const getSpotifyToken = async (sessionId) => {
   let {
     // eslint-disable-next-line prefer-const
@@ -68,7 +78,7 @@ router.get('/key/:key', async (req, res) => {
 // Create session
 router.post('/', async (req, res) => {
   const key = nanoid(6).toUpperCase();
-  const id = monk.id()
+  const id = monk.id();
   const { host } = req.body;
   const session = {
     _id: id,
@@ -95,7 +105,10 @@ router.post('/:sessionId/members/:userId', async (req, res, next) => {
   sessions.update({ _id: monk.id(sessionId) }, { $addToSet: { members: userId } })
     .then(() => users.update({ _id: monk.id(userId) }, { $set: { session: sessionId } }))
     .then(() => sessions.findOne({ _id: monk.id(sessionId) }))
-    .then((doc) => res.send(doc))
+    .then((doc) => {
+      broadcast(sessionId, req.app.locals.clients);
+      res.send(doc);
+    })
     .catch(next);
 });
 
@@ -111,7 +124,10 @@ router.post('/:sessionId/queue', async (req, res, next) => {
     })
     .then(() => sessions.update({ _id: sessionId }, { $push: { queue: song } }))
     .then(() => sessions.findOne({ _id: sessionId }))
-    .then((doc) => res.send(doc.queue))
+    .then((doc) => {
+      broadcast(sessionId, req.app.locals.clients);
+      res.send(doc.queue);
+    })
     .catch((err) => {
       if (err.response !== undefined) {
         return next(JSON.stringify(err.response.data));
@@ -126,7 +142,10 @@ router.delete('/:sessionId/members/:userId', async (req, res, next) => {
   const { userId } = req.params;
   sessions.update({ _id: sessionId }, { $pull: { members: userId } })
     .then(() => users.update({ _id: monk.id(userId) }, { $set: { session: null } }))
-    .then(() => res.send())
+    .then(() => {
+      broadcast(sessionId, req.app.locals.clients);
+      res.send();
+    })
     .catch(next);
 });
 

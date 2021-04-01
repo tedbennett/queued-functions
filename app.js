@@ -1,13 +1,14 @@
+/* eslint-disable no-param-reassign */
 const createError = require('http-errors');
 const express = require('express');
 const logger = require('morgan');
+const { createServer } = require('http');
+const WebSocket = require('ws');
 
 const usersRouter = require('./routes/users');
 const sessionsRouter = require('./routes/sessions');
 
 const app = express();
-
-// view engine setup
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -32,4 +33,20 @@ app.use((err, req, res) => {
   res.render('error');
 });
 
-module.exports = app;
+const server = createServer(app);
+const wss = new WebSocket.Server({ server });
+wss.on('connection', (ws) => {
+  console.info('Total connected clients:', wss.clients.size);
+  app.locals.clients = wss.clients;
+  ws.isAlive = true;
+
+  ws.on('message', (data) => {
+    const message = JSON.parse(data);
+    if (message.type === 'join') {
+      ws.session = message.sessionId;
+      setInterval(() => { ws.ping(); }, 9000);
+    }
+  });
+});
+
+module.exports = server;
