@@ -8,9 +8,11 @@ const sessions = db.get('sessions');
 const users = db.get('users');
 
 const broadcast = async (id, clients) => {
+  if (clients === undefined) return;
   const session = await sessions.findOne({ id });
-
-  clients.forEach((client) => {
+  const array = Array.from(clients);
+  if (array.length === 0) return;
+  array.forEach((client) => {
     if (client.session === id && client.readyState === WebSocket.OPEN) {
       client.send(session);
     }
