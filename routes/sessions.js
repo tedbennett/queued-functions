@@ -55,18 +55,14 @@ const getSpotifyToken = async (sessionId) => {
 router.get('/:id', async (req, res) => {
   const session = await sessions.findOne({ _id: monk.id(req.params.id) });
 
-  res.json({
-    session,
-  });
+  res.json(session);
 });
 
 // Get session by 6-digit key
 router.get('/key/:key', async (req, res) => {
   const session = await sessions.findOne({ key: req.params.key });
 
-  res.json({
-    session,
-  });
+  res.json(session);
 });
 
 // Create session

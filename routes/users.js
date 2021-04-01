@@ -10,9 +10,7 @@ const users = db.get('users');
 router.get('/:id', async (req, res) => {
   const user = await users.findOne({ _id: monk.id(req.params.id) });
 
-  res.json({
-    user,
-  });
+  res.json(user);
 });
 
 // Get multiple users by id
@@ -20,9 +18,7 @@ router.get('/', async (req, res) => {
   const ids = req.body.ids.map((id) => monk.id(id));
   const members = await users.find({ _id: { $in: ids } });
 
-  res.send({
-    members,
-  });
+  res.json(members);
 });
 
 // Create user
