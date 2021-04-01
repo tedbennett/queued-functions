@@ -2,21 +2,26 @@ const router = require('express').Router();
 const monk = require('monk');
 const { nanoid } = require('nanoid');
 const axios = require('axios');
+const WebSocket = require('ws');
 const db = require('../database');
 
 const sessions = db.get('sessions');
 const users = db.get('users');
 
 const broadcast = async (id, clients) => {
+  console.log('Sending broadcast');
   if (clients === undefined) return;
   const session = await sessions.findOne({ id });
   const array = Array.from(clients);
   if (array.length === 0) return;
+  let count = 0;
   array.forEach((client) => {
     if (client.session === id && client.readyState === WebSocket.OPEN) {
-      client.send(session);
+      client.send(JSON.stringify(session));
+      count += 1;
     }
   });
+  console.log(`Sent broadcast to ${count} subscribers`);
 };
 
 const getSpotifyToken = async (sessionId) => {
@@ -127,7 +132,7 @@ router.post('/:sessionId/queue', async (req, res, next) => {
     .then(() => sessions.update({ _id: sessionId }, { $push: { queue: song } }))
     .then(() => sessions.findOne({ _id: sessionId }))
     .then((doc) => {
-      broadcast(sessionId, req.app.locals.clients);
+      broadcast(doc.id, req.app.locals.clients);
       res.send(doc.queue);
     })
     .catch((err) => {
