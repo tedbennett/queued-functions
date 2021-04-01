@@ -72,8 +72,11 @@ router.get('/key/:key', async (req, res) => {
 // Create session
 router.post('/', async (req, res) => {
   const key = nanoid(6).toUpperCase();
+  const id = monk.id()
   const { host } = req.body;
   const session = {
+    _id: id,
+    id: id.toString(),
     key,
     name: req.body.name,
     host,

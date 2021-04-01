@@ -30,6 +30,7 @@ router.post('/', async (req, res) => {
   const id = monk.id();
   const user = {
     _id: id,
+    id: id.toString(),
     name: req.body.name,
     image_url: req.body.image_url,
   };
