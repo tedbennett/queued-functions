@@ -29,10 +29,10 @@ const getSpotifyToken = async (sessionId) => {
     // eslint-disable-next-line prefer-const
     hostId, token, refresh, expiry,
   } = await sessions.findOne({ _id: sessionId })
-    .then((session) => users.findOne({ _id: monk.id(session.host) }))
+    .then((session) => users.findOne({ id: session.host }))
     .then((host) => ({
       // eslint-disable-next-line no-underscore-dangle
-      hostId: host._id,
+      hostId: host.id,
       token: host.access_token,
       refresh: host.refresh_token,
       expiry: host.expires_at,

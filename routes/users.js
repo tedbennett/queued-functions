@@ -29,6 +29,7 @@ router.post('/', async (req, res) => {
     id: id.toString(),
     name: req.body.name,
     image_url: req.body.image_url,
+    host: false,
   };
   users.insert(user).then(() => {
     res.status(200);
@@ -88,6 +89,32 @@ router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
     },
   }).then(() => res.send())
     .catch(next);
+});
+
+router.post('/:id/logoutFromSpotify', async (req, res, next) => {
+  let id;
+  try {
+    id = monk.id(req.params.id);
+  } catch (err) {
+    res.status(404);
+    next(err);
+    return;
+  }
+  users.update({ _id: id }, {
+    $set: {
+      host: false,
+      access_token: null,
+      refresh_token: null,
+      expires_at: null,
+    },
+  })
+    .then(() => {
+      res.status(200);
+      res.send();
+    })
+    .catch((err) => {
+      next(err);
+    });
 });
 
 module.exports = router;
