@@ -106,6 +106,17 @@ router.post('/', async (req, res) => {
     });
 });
 
+// Update a session (only name)
+router.post('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  sessions.update({ id }, { name })
+    .then((doc) => {
+      broadcast(id, req.app.locals.clients);
+      res.send(doc);
+    });
+});
+
 // Add user to session
 router.post('/:sessionId/members/:userId', async (req, res, next) => {
   const { userId, sessionId } = req.params;
@@ -160,7 +171,10 @@ router.delete('/:sessionId/members/:userId', async (req, res, next) => {
 router.delete('/:sessionId', async (req, res, next) => {
   const { sessionId } = req.params;
   sessions.remove({ _id: monk.id(sessionId) })
-    .then(() => users.update({ session: sessionId }, { $set: { session: null } }))
+    .then(() => {
+      broadcast(sessionId, req.app.locals.clients);
+      return users.update({ session: sessionId }, { $set: { session: null } });
+    })
     .then(() => res.send())
     .catch(next);
 });

@@ -39,16 +39,9 @@ router.post('/', async (req, res) => {
 
 // Update user
 router.post('/:id', async (req, res, next) => {
-  let id;
-  try {
-    id = monk.id(req.params.id);
-  } catch (err) {
-    res.status(404);
-    next(err);
-    return;
-  }
+  const { id } = req.params;
   const data = { name: req.body.name, image_url: req.body.image_url };
-  users.update({ _id: id }, { $set: data })
+  users.update({ id }, { $set: data })
     .then(() => {
       res.status(200);
       res.send();
@@ -92,15 +85,8 @@ router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
 });
 
 router.post('/:id/logoutFromSpotify', async (req, res, next) => {
-  let id;
-  try {
-    id = monk.id(req.params.id);
-  } catch (err) {
-    res.status(404);
-    next(err);
-    return;
-  }
-  users.update({ _id: id }, {
+  const { id } = req.params;
+  users.update({ id }, {
     $set: {
       host: false,
       access_token: null,
@@ -108,13 +94,8 @@ router.post('/:id/logoutFromSpotify', async (req, res, next) => {
       expires_at: null,
     },
   })
-    .then(() => {
-      res.status(200);
-      res.send();
-    })
-    .catch((err) => {
-      next(err);
-    });
+    .then(() => res.send())
+    .catch(next);
 });
 
 module.exports = router;

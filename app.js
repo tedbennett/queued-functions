@@ -47,6 +47,11 @@ wss.on('connection', (ws) => {
       setInterval(() => { ws.ping(); }, 9000);
     }
   });
+
+  ws.on('close', () => {
+    console.info('Total connected clients:', wss.clients.size);
+    app.locals.clients = wss.clients;
+  });
 });
 
 module.exports = server;
