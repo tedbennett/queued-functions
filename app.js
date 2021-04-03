@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 
 const usersRouter = require('./routes/users');
 const sessionsRouter = require('./routes/sessions');
+const storageRouter = require('./routes/storage');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/users', usersRouter);
 app.use('/sessions', sessionsRouter);
+app.use('/storage', storageRouter);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

@@ -1,12 +1,15 @@
 const router = require('express').Router();
 const monk = require('monk');
-const { nanoid } = require('nanoid');
+const { customAlphabet } = require('nanoid');
 const axios = require('axios');
 const WebSocket = require('ws');
 const db = require('../database');
 
 const sessions = db.get('sessions');
 const users = db.get('users');
+
+const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const nanoid = customAlphabet(alphabet, 6);
 
 const broadcast = async (id, clients) => {
   console.log('Sending broadcast');
@@ -57,7 +60,7 @@ const getSpotifyToken = async (sessionId) => {
 
     token = newToken;
     expiry = now.getTime() + (newExpiry * 1000);
-    users.update({ _id: monk.id(hostId) }, {
+    users.update({ id: hostId }, {
       $set: {
         access_token: token,
         expires_at: expiry,
@@ -70,7 +73,8 @@ const getSpotifyToken = async (sessionId) => {
 
 // Get session by id
 router.get('/:id', async (req, res) => {
-  const session = await sessions.findOne({ _id: monk.id(req.params.id) });
+  const { id } = req.params;
+  const session = await sessions.findOne({ id });
 
   res.json(session);
 });
@@ -84,7 +88,7 @@ router.get('/key/:key', async (req, res) => {
 
 // Create session
 router.post('/', async (req, res) => {
-  const key = nanoid(6).toUpperCase();
+  const key = nanoid();
   const id = monk.id();
   const { host } = req.body;
   const session = {
@@ -101,7 +105,7 @@ router.post('/', async (req, res) => {
   sessions.insert(session)
     .then((doc) => {
       // eslint-disable-next-line no-underscore-dangle
-      users.update({ _id: monk.id(host) }, { $set: { session: doc._id } });
+      users.update({ id: host }, { $set: { session: doc._id } });
       res.send(doc);
     });
 });
@@ -120,9 +124,9 @@ router.post('/:id', async (req, res) => {
 // Add user to session
 router.post('/:sessionId/members/:userId', async (req, res, next) => {
   const { userId, sessionId } = req.params;
-  sessions.update({ _id: monk.id(sessionId) }, { $addToSet: { members: userId } })
-    .then(() => users.update({ _id: monk.id(userId) }, { $set: { session: sessionId } }))
-    .then(() => sessions.findOne({ _id: monk.id(sessionId) }))
+  sessions.update({ id: sessionId }, { $addToSet: { members: userId } })
+    .then(() => users.update({ id: userId }, { $set: { session: sessionId } }))
+    .then(() => sessions.findOne({ id: sessionId }))
     .then((doc) => {
       broadcast(sessionId, req.app.locals.clients);
       res.send(doc);
@@ -132,7 +136,7 @@ router.post('/:sessionId/members/:userId', async (req, res, next) => {
 
 // Add song to session queue
 router.post('/:sessionId/queue', async (req, res, next) => {
-  const sessionId = monk.id(req.params.sessionId);
+  const { sessionId } = req.params;
   const song = req.body;
 
   getSpotifyToken(sessionId)
@@ -140,8 +144,8 @@ router.post('/:sessionId/queue', async (req, res, next) => {
       const auth = { headers: { Authorization: `Bearer ${token}` } };
       return axios.post(`https://api.spotify.com/v1/me/player/queue?uri=${song.id}`, {}, auth);
     })
-    .then(() => sessions.update({ _id: sessionId }, { $push: { queue: song } }))
-    .then(() => sessions.findOne({ _id: sessionId }))
+    .then(() => sessions.update({ id: sessionId }, { $push: { queue: song } }))
+    .then(() => sessions.findOne({ _d: sessionId }))
     .then((doc) => {
       broadcast(doc.id, req.app.locals.clients);
       res.send(doc.queue);
@@ -154,12 +158,24 @@ router.post('/:sessionId/queue', async (req, res, next) => {
     });
 });
 
+// Check if there's an active device in the session
+router.get('/:sessionId/isActive', async (req, res, next) => {
+  const { sessionId } = req.params;
+  getSpotifyToken(sessionId)
+    .then((token) => {
+      const auth = { headers: { Authorization: `Bearer ${token}` } };
+      return axios.get('https://api.spotify.com/v1/me/player/devices', auth);
+    })
+    .then((response) => res.send(response.data))
+    .catch(next);
+});
+
 // Remove user from session
 router.delete('/:sessionId/members/:userId', async (req, res, next) => {
-  const sessionId = monk.id(req.params.sessionId);
+  const { sessionId } = req.params;
   const { userId } = req.params;
-  sessions.update({ _id: sessionId }, { $pull: { members: userId } })
-    .then(() => users.update({ _id: monk.id(userId) }, { $set: { session: null } }))
+  sessions.update({ id: sessionId }, { $pull: { members: userId } })
+    .then(() => users.update({ id: userId }, { $set: { session: null } }))
     .then(() => {
       broadcast(sessionId, req.app.locals.clients);
       res.send();
@@ -170,7 +186,7 @@ router.delete('/:sessionId/members/:userId', async (req, res, next) => {
 // Delete session
 router.delete('/:sessionId', async (req, res, next) => {
   const { sessionId } = req.params;
-  sessions.remove({ _id: monk.id(sessionId) })
+  sessions.remove({ id: sessionId })
     .then(() => {
       broadcast(sessionId, req.app.locals.clients);
       return users.update({ session: sessionId }, { $set: { session: null } });
