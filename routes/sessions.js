@@ -31,7 +31,7 @@ const getSpotifyToken = async (sessionId) => {
   let {
     // eslint-disable-next-line prefer-const
     hostId, token, refresh, expiry,
-  } = await sessions.findOne({ _id: sessionId })
+  } = await sessions.findOne({ id: sessionId })
     .then((session) => users.findOne({ id: session.host }))
     .then((host) => ({
       // eslint-disable-next-line no-underscore-dangle
@@ -145,7 +145,7 @@ router.post('/:sessionId/queue', async (req, res, next) => {
       return axios.post(`https://api.spotify.com/v1/me/player/queue?uri=${song.id}`, {}, auth);
     })
     .then(() => sessions.update({ id: sessionId }, { $push: { queue: song } }))
-    .then(() => sessions.findOne({ _d: sessionId }))
+    .then(() => sessions.findOne({ id: sessionId }))
     .then((doc) => {
       broadcast(doc.id, req.app.locals.clients);
       res.send(doc.queue);
