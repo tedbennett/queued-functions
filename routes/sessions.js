@@ -113,8 +113,14 @@ router.post('/', async (req, res) => {
 // Update a session (only name)
 router.post('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
-  sessions.update({ id }, { name })
+  // eslint-disable-next-line camelcase
+  const { name, image_url } = req.body;
+  sessions.update({ id }, {
+    $set: {
+      image_url,
+      name,
+    },
+  })
     .then((doc) => {
       broadcast(id, req.app.locals.clients);
       res.send(doc);
