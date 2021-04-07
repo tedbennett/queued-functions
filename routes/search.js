@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const axios = require('axios');
-
+const { checkAuth } = require('../middleware');
 require('dotenv').config();
 
-const spotifyCredentials = async () => {
+const getSpotifyCredentials = async (req, res, next) => {
   const params = new URLSearchParams();
   params.append('grant_type', 'client_credentials');
   params.append('client_id', '1e6ef0ef377c443e8ebf714b5b77cad7');
@@ -11,12 +11,16 @@ const spotifyCredentials = async () => {
 
   const header = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
 
-  const response = await axios.post('https://accounts.spotify.com/api/token', params, header)
-    .catch((err) => console.log(err));
-  return response.data.access_token;
+  const response = await axios.post('https://accounts.spotify.com/api/token', params, header);
+  if (response?.data?.access_token) {
+    req.token = response.data.access_token;
+    next();
+  } else {
+    res.status(500).send('Spotify authorisation error');
+  }
 };
 
-const extractSong = (data) => {
+const parseSongs = (data) => {
   if (data.items === undefined) return [];
   return data.items.map((track) => ({
     id: track.uri,
@@ -27,20 +31,19 @@ const extractSong = (data) => {
   }));
 };
 
-router.get('/', async (req, res) => {
-  console.log('Searching');
+router.get('/', checkAuth, getSpotifyCredentials, async (req, res) => {
   const { query } = req.query;
-  const accessToken = await spotifyCredentials();
+  const { token } = req;
   const url = `https://api.spotify.com/v1/search?q=${query}&type=track&limit=10`;
 
   const params = {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
     },
   };
 
   axios.get(url, params)
-    .then((tracks) => res.send(extractSong(tracks.data.tracks)));
+    .then((tracks) => res.send(parseSongs(tracks.data.tracks)));
 });
 
 module.exports = router;

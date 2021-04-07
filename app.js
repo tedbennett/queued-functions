@@ -49,6 +49,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (data) => {
     const message = JSON.parse(data);
     if (message.type === 'join') {
+      ws.user = message.userId;
       ws.session = message.sessionId;
       setInterval(() => { ws.ping(); }, 9000);
     }

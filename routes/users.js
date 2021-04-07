@@ -3,22 +3,13 @@ const monk = require('monk');
 const axios = require('axios');
 require('dotenv').config();
 const db = require('../database');
+const { checkAuth, userExists } = require('../middleware');
 
 const users = db.get('users');
 
 // Get user by id
-router.get('/:id', async (req, res) => {
-  const user = await users.findOne({ _id: monk.id(req.params.id) });
-
-  res.json(user);
-});
-
-// Get multiple users by id
-router.get('/', async (req, res) => {
-  const ids = req.body.ids.map((id) => monk.id(id));
-  const members = await users.find({ _id: { $in: ids } });
-
-  res.json(members);
+router.get('/:userId', checkAuth, userExists, async (req, res) => {
+  res.send(req.user);
 });
 
 // Create user
@@ -32,28 +23,29 @@ router.post('/', async (req, res) => {
     host: false,
   };
   users.insert(user).then(() => {
-    res.status(200);
     res.send(id);
   });
 });
 
 // Update user
-router.post('/:id', async (req, res, next) => {
-  const { id } = req.params;
+router.patch('/:userId', checkAuth, userExists, async (req, res) => {
+  const { user } = req;
   const data = { name: req.body.name, image_url: req.body.image_url };
-  users.update({ id }, { $set: data })
+  users.update({ id: user.id }, { $set: data })
     .then(() => {
-      res.status(200);
       res.send();
     })
-    .catch((err) => {
-      next(err);
+    .catch((error) => {
+      res.status(500).send({
+        error,
+        message: 'Error updating user collection',
+      });
     });
 });
 
-router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
+router.post('/:userId/authoriseWithSpotify', checkAuth, userExists, async (req, res) => {
   const { code } = req.body;
-  const { id } = req.params;
+  const { user } = req;
 
   const params = new URLSearchParams();
   params.append('grant_type', 'authorization_code');
@@ -68,12 +60,14 @@ router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
   const { access_token, refresh_token, expires_in } = await axios.post('https://accounts.spotify.com/api/token', params, header)
     .then((response) => response.data)
     .catch((error) => {
-      console.log(`ERROR: ${JSON.stringify(error)}`);
-      next(error.response.status);
+      res.status(500).send({
+        error,
+        message: 'Error authenticating with spotify',
+      });
     });
   // eslint-disable-next-line camelcase
   const expires_at = new Date().getTime() + (expires_in * 1000);
-  users.update({ _id: monk.id(id) }, {
+  users.update({ id: user.id }, {
     $set: {
       host: true,
       access_token,
@@ -81,12 +75,17 @@ router.post('/:id/authoriseWithSpotify', async (req, res, next) => {
       expires_at,
     },
   }).then(() => res.send())
-    .catch(next);
+    .catch((error) => {
+      res.status(500).send({
+        error,
+        message: 'Error updating user collection',
+      });
+    });
 });
 
-router.post('/:id/logoutFromSpotify', async (req, res, next) => {
-  const { id } = req.params;
-  users.update({ id }, {
+router.post('/:userId/logoutFromSpotify', checkAuth, userExists, async (req, res) => {
+  const { user } = req;
+  users.update({ id: user.id }, {
     $set: {
       host: false,
       access_token: null,
@@ -95,7 +94,12 @@ router.post('/:id/logoutFromSpotify', async (req, res, next) => {
     },
   })
     .then(() => res.send())
-    .catch(next);
+    .catch((error) => {
+      res.status(500).send({
+        error,
+        message: 'Error updating user collection',
+      });
+    });
 });
 
 module.exports = router;
