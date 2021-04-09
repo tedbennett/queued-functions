@@ -4,7 +4,7 @@ const { customAlphabet } = require('nanoid');
 const axios = require('axios');
 const WebSocket = require('ws');
 const db = require('../database');
-const { checkAuth, sessionExists, userExists } = require('../middleware');
+const { checkAuth, sessionExists } = require('../middleware');
 
 const sessions = db.get('sessions');
 const users = db.get('users');

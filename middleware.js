@@ -5,7 +5,7 @@ const users = db.get('users');
 
 // Check whether the user token exists in the db
 const checkAuth = async (req, res, next) => {
-  const userId = req.body.user_id;
+  const userId = req.header('User-Id');
   const user = await users.findOne({ id: userId });
   if (!user) {
     res.status(403).send('Unauthorised');
