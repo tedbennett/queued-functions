@@ -125,7 +125,7 @@ router.post('/', checkAuth, async (req, res) => {
 
   sessions.insert(session)
     .then(() => users.update({ id: user.id }, { $set: { session: id } }))
-    .then(() => res.send());
+    .then(() => res.send(session));
 });
 
 // Update a session (only name)
