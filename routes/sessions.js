@@ -143,12 +143,12 @@ router.patch('/:sessionId', checkAuth, sessionExists, async (req, res) => {
 // Add user to session
 router.post('/:sessionId/members', checkAuth, sessionExists, async (req, res) => {
   const { user, session } = req;
-  console.log(user.id, session.id);
   sessions.update({ id: session.id }, { $addToSet: { members: user.id } })
     .then(() => users.update({ id: user.id }, { $set: { session: session.id } }))
-    .then(() => {
+    .then(() => sessions.findOne({ id: session.id }))
+    .then((doc) => {
       broadcast(session.id, req.app.locals.clients);
-      res.send();
+      res.send(doc);
     })
     .catch((error) => {
       res.status(500).send({
